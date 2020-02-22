@@ -9,6 +9,7 @@
 #define PNAME        16  // chars in process name
 #define PGSIZE     4096  // size of initial pages for proc
 #define NCPU          8  // maximum number of CPUs
+#define LATENCY       50 
 
 
 // Per-CPU state
@@ -58,5 +59,7 @@ struct proc {
   char ofiles[NFILE];          // Open files
   char cwd[CWD];               // Current directory
   char name[PNAME];            // Process name (debugging)
+  int nice;                    
+  int weight;
 };
 
