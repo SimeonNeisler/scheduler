@@ -319,6 +319,50 @@ scheduler(void)
 
 }
 
+void round_robin(void) {
+
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  
+  if(curr_proc == &ptable.proc[NPROC]) {
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if(p->state != RUNNABLE) {
+        continue;
+      } else {
+        curr_proc->state = RUNNABLE;
+        curr_proc = p;
+        curr_proc->state = RUNNING;
+        break;
+      }
+    }
+  } else {
+    for(p = curr_proc+1; p < &ptable.proc[NPROC]; p++) {
+      if(p->state == RUNNABLE) {
+        curr_proc->state = RUNNABLE;
+        curr_proc = p;
+        curr_proc->state = RUNNING;
+        break;
+      }
+    }
+    if(p == &ptable.proc[NPROC]) {
+      p = ptable.proc;
+      while(p != curr_proc) {
+        if(p->state == RUNNABLE) {
+          curr_proc->state = RUNNABLE;
+          curr_proc = p;
+          curr_proc->state = RUNNING;
+          break;
+        }
+        p++;
+      }
+    }
+  }
+
+  release(&ptable.lock);
+
+}
+
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
