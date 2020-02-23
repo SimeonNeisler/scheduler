@@ -136,6 +136,10 @@ Fork(int fork_proc_id)
   pid = np->pid;
   np->state = RUNNABLE;
   strcpy(np->name, fork_proc->name);
+  np->niceIndex = 0;
+  np->nice = NICEVALS[np->niceIndex]
+  np->weight = 1024/(pow(1.25, np->nice));
+  np->vruntime = 0;
   return pid;
 }
 
