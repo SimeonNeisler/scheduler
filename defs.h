@@ -16,4 +16,7 @@ int             userinit(void);
 int             Wait(int);
 int             Sleep(int, int);
 void            Wakeup(int);
+int             round_robin();
+int             lcfs();
+void            setNice(int, int);
 

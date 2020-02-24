@@ -17,11 +17,10 @@ int executeCmd(char** params, int nparams);
 #define MAX_COMMAND_LENGTH 100
 #define MAX_NUMBER_OF_PARAMS 10
 
-enum cmds        { FORK=0, SETPID,   SHOWPID,   WAIT,   EXIT,   SLEEP,   WAKEUP,   PS,   SCHEDULE,  TIMER,    HELP,   QUIT };
-char *cmdstr[] = {"fork", "Setpid", "currpid",  "wait", "exit", "sleep", "wakeup", "ps",   "schedule", "timer", "help", "quit"};
+enum cmds        { FORK=0, SETPID,   SHOWPID,   WAIT,   EXIT,   SLEEP,   WAKEUP,   PS,   SCHEDULE,  TIMER,    HELP,   QUIT , RR, NICE, LCFS};
+char *cmdstr[] = {"fork", "Setpid", "currpid",  "wait", "exit", "sleep", "wakeup", "ps",   "schedule", "timer", "help", "quit", "rr", "nice", "lcfs"};
 
 int curr_proc_id = 0;
-
 int local_scheduler() {
     scheduler();
     struct proc *p = curr_proc;
@@ -62,7 +61,7 @@ void parseCmd(char* cmd, char** params, int *nparams)
 
 int executeCmd(char** params, int nparams)
 {
-    int pid, rc = 1, chan;
+    int pid, rc = 1, chan, niceVal;
     int ncmds = sizeof(cmdstr) / sizeof(char *);
     int cmd_index;
     for (cmd_index = 0; cmd_index < ncmds; cmd_index++)
@@ -157,6 +156,28 @@ int executeCmd(char** params, int nparams)
         break;
     case QUIT:
         rc = 0;
+        break;
+    case RR:
+        pid = round_robin();
+        printf("Scheduler selected pid %d\n", pid);
+        break;
+    case NICE:
+        if (nparams > 2) {
+            pid = atoi(params[1]);
+            niceVal = atoi(params[2]);
+        }
+        else if(nparams == 2) {
+            pid = curr_proc->pid;
+            niceVal = atoi(params[1]);
+        } else {
+            printf("");
+            break;
+        }
+        setNice(pid, niceVal);
+        break;
+    case LCFS:
+        pid = lcfs();
+        printf("Scheduler selected pid %d\n", pid);
         break;
     default:
         printf("Invalid command! Enter Help to see commands.\n");

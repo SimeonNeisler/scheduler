@@ -6,9 +6,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "types.h"
 #include "defs.h"
 #include "proc.h"
+
+const int niceVals[40] = {-20, -19, -18, -17, -16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
 
 static void wakeup1(int chan);
 
@@ -106,8 +109,23 @@ userinit(void)
   strcpy(p->cwd, "/");
   strcpy(p->name, "userinit"); 
   p->state = RUNNING;
+  p->niceIndex = 20;
+  p->nice = niceVals[p->niceIndex];
+  p->weight = 1024;
+  p->vruntime = 0;
+  p->runtime = 0;
   curr_proc = p;
+
   return p->pid;
+}
+
+void setNice(int pid, int nice) {
+  struct proc *p = findproc(pid);
+  if(p != 0) {
+    p->niceIndex = nice+20;
+    p->nice = niceVals[p->niceIndex];
+    p->weight = 1024/(pow(1.25, p->nice));
+  }
 }
 
 // Create a new process copying p as the parent.
@@ -136,11 +154,49 @@ Fork(int fork_proc_id)
   pid = np->pid;
   np->state = RUNNABLE;
   strcpy(np->name, fork_proc->name);
-  np->niceIndex = 0;
-  np->nice = NICEVALS[np->niceIndex]
-  np->weight = 1024/(pow(1.25, np->nice));
+  np->niceIndex = 20;
+  np->nice = niceVals[np->niceIndex];
+  np->weight = 1024;
   np->vruntime = 0;
+  np->runtime = 0;
+  int numProcs = 0;
+  int totalVrt = 0;
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->pid) {
+      totalVrt += p->vruntime;
+      numProcs++;
+    }
+  }
+  np->vruntime = (totalVrt/(numProcs-1));
   return pid;
+}
+
+int sumWeight() {
+  struct proc *p;
+  int totalWeight = 0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->state == RUNNABLE || p->state == RUNNING) {
+      totalWeight += p->weight;
+    }
+  }
+  return totalWeight;
+}
+
+int calcTimeSlice(int pid) {
+  int totalWeight = sumWeight();
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->pid == pid) {
+      break;
+    }
+  }
+  int time_slice = (p->weight * LATENCY/totalWeight);
+  printf("time slice: %d\n", time_slice);
+  if(time_slice < MIN_GRAN) {
+    time_slice = MIN_GRAN;
+  }
+  return time_slice;
 }
 
 // Exit the current process.  Does not return.
@@ -323,7 +379,7 @@ scheduler(void)
 
 }
 
-void round_robin(void) {
+int round_robin() {
 
   struct proc *p;
 
@@ -334,7 +390,8 @@ void round_robin(void) {
       if(p->state != RUNNABLE) {
         continue;
       } else {
-        curr_proc->state = RUNNABLE;
+        if(curr_proc->state == RUNNING)
+          curr_proc->state = RUNNABLE;
         curr_proc = p;
         curr_proc->state = RUNNING;
         break;
@@ -343,7 +400,8 @@ void round_robin(void) {
   } else {
     for(p = curr_proc+1; p < &ptable.proc[NPROC]; p++) {
       if(p->state == RUNNABLE) {
-        curr_proc->state = RUNNABLE;
+        if(curr_proc->state == RUNNING)
+          curr_proc->state = RUNNABLE;
         curr_proc = p;
         curr_proc->state = RUNNING;
         break;
@@ -353,7 +411,8 @@ void round_robin(void) {
       p = ptable.proc;
       while(p != curr_proc) {
         if(p->state == RUNNABLE) {
-          curr_proc->state = RUNNABLE;
+          if(curr_proc->state == RUNNING)
+            curr_proc->state = RUNNABLE;
           curr_proc = p;
           curr_proc->state = RUNNING;
           break;
@@ -362,9 +421,36 @@ void round_robin(void) {
       }
     }
   }
-
   release(&ptable.lock);
+  return curr_proc->pid;
+}
 
+
+int lcfs() {
+  struct proc *p;
+  struct proc *lowest;
+  lowest = curr_proc;
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->state == RUNNABLE) {
+      if(p->vruntime < lowest->vruntime) {
+        lowest = p;
+      }
+      if(p->vruntime == lowest->vruntime) {
+        if(lowest->weight < p->weight) {
+          lowest = p;
+        }
+      }
+    }
+  }
+  curr_proc->state = RUNNABLE;
+  curr_proc = lowest;
+  curr_proc->state = RUNNING;
+  curr_proc->runtime =calcTimeSlice(lowest->pid);
+  curr_proc->vruntime += (1024 * curr_proc->runtime/curr_proc->weight);
+  release(&ptable.lock);
+  return curr_proc->pid;
 }
 
 // Print a process listing to console.  For debugging.
@@ -377,7 +463,7 @@ procdump(void)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->pid > 0)
-      printf("pid: %d, parent: %d state: %s\n", p->pid, p->parent == 0 ? 0 : p->parent->pid, procstatep[p->state]);
+      printf("pid: %d, parent: %d state: %s\t nice: %d\t weight: %d \tvrt: %d\t rt: %d\n", p->pid, p->parent == 0 ? 0 : p->parent->pid, procstatep[p->state], p->nice, p->weight, p->vruntime, p->runtime);
 }
 
 
