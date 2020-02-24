@@ -66,6 +66,6 @@ struct proc {
   int nice;                    // added niceness for lcfs 
   int weight;                  // added weight for lcfs
   int vruntime;                // added vruntime for lcfs
-  int runtime;            
+  int timeslice;            
 };
 

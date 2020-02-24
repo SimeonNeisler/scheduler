@@ -1,0 +1,8 @@
+rr      <--Cheks to make sure something is always running
+fork    
+fork    <--Fork 2 more processes
+rr
+rr
+rr      <--Demonstrate rotating process switching
+sleep 2 1 
+rr      <--Demonstrate that it skips over sleeping processes

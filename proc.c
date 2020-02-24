@@ -113,7 +113,7 @@ userinit(void)
   p->nice = niceVals[p->niceIndex];
   p->weight = 1024;
   p->vruntime = 0;
-  p->runtime = 0;
+  p->timeslice = 0;
   curr_proc = p;
 
   return p->pid;
@@ -158,7 +158,7 @@ Fork(int fork_proc_id)
   np->nice = niceVals[np->niceIndex];
   np->weight = 1024;
   np->vruntime = 0;
-  np->runtime = 0;
+  np->timeslice = 0;
   int numProcs = 0;
   int totalVrt = 0;
   struct proc *p;
@@ -447,8 +447,8 @@ int lcfs() {
   curr_proc->state = RUNNABLE;
   curr_proc = lowest;
   curr_proc->state = RUNNING;
-  curr_proc->runtime =calcTimeSlice(lowest->pid);
-  curr_proc->vruntime += (1024 * curr_proc->runtime/curr_proc->weight);
+  curr_proc->timeslice =calcTimeSlice(lowest->pid);
+  curr_proc->vruntime += (1024 * curr_proc->timeslice/curr_proc->weight);
   release(&ptable.lock);
   return curr_proc->pid;
 }
@@ -463,7 +463,7 @@ procdump(void)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->pid > 0)
-      printf("pid: %d, parent: %d state: %s\t nice: %d\t weight: %d \tvrt: %d\t rt: %d\n", p->pid, p->parent == 0 ? 0 : p->parent->pid, procstatep[p->state], p->nice, p->weight, p->vruntime, p->runtime);
+      printf("pid: %d, parent: %d state: %s\t nice: %d\t weight: %d \tvrt: %d\t timeslice: %d\n", p->pid, p->parent == 0 ? 0 : p->parent->pid, procstatep[p->state], p->nice, p->weight, p->vruntime, p->timeslice);
 }
 
 
