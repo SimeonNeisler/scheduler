@@ -1,0 +1,25 @@
+Needed to demo:
+    niceness/weighting
+    sleep process
+    vruntime
+    min_granularity
+
+fork
+fork       <-- Fork 2 processes
+lcfs
+lcfs
+lcfs       <-- Demo round robin with equal processes
+nice 1 -5  
+nice 2 5   <-- Change process niceness values to demonstrate weighting
+lcfs
+lcfs
+lcfs
+sleep 1 1
+lcfs
+lcfs
+wakeup 1
+nice 1 0
+nice 2 0
+fork (10)  <-- Change processes back to default weighting and fork multiple processes
+lcfs
+lcfs       <-- Demo min_grnaularity on time slices 

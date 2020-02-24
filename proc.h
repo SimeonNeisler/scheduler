@@ -11,7 +11,7 @@
 #define NCPU          8  // maximum number of CPUs
 
 #define LATENCY       100 //added schedule latency
-#define MIN_GRAN      10
+#define MIN_GRAN      10  //
 
 
 // Per-CPU state
@@ -66,6 +66,6 @@ struct proc {
   int nice;                    // added niceness for lcfs 
   int weight;                  // added weight for lcfs
   int vruntime;                // added vruntime for lcfs
-  int timeslice;            
+  int timeslice;               // how long a process runs for once lcfs is called
 };
 

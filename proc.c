@@ -99,6 +99,8 @@ found:
 }
 
 // Set up first user process.
+/*This function was updated to give the default process a default niceness index of 20, a default niceness of 0, a default weight of 1024, a default virtual run time of 0 and a default time slice of 0 
+*/
 int
 userinit(void)
 {
@@ -119,6 +121,9 @@ userinit(void)
   return p->pid;
 }
 
+/*
+  This function can be used to set the niceness value of a process, by passing in the process id, and the desired niceness value, and then recalculates the process' new weight.
+*/
 void setNice(int pid, int nice) {
   struct proc *p = findproc(pid);
   if(p != 0) {
@@ -131,6 +136,9 @@ void setNice(int pid, int nice) {
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
+
+/*This function was updated to give new process' a default niceness index (the position in the nicevals array that they should hold), a default niceness, a default weight, a default time slice (of 0) and a default virtual run time that is equivalent to the average virtual run time of all process' in the process table
+*/
 int
 Fork(int fork_proc_id)
 {
@@ -172,6 +180,8 @@ Fork(int fork_proc_id)
   return pid;
 }
 
+/*This process calculates the total weight of all running and runnable process' in the process table*/
+
 int sumWeight() {
   struct proc *p;
   int totalWeight = 0;
@@ -183,6 +193,12 @@ int sumWeight() {
   return totalWeight;
 }
 
+
+/*This process calculates the time slice of a process given its pid
+    It starts by locating a process in the table given its pid
+    Then it calculates the time slice for this process by (the process' weight * schedule latency)/the total weight of all running or runnable process'
+    If the calculated time slice is less than the minimum granularity it simply return the minimum granularity
+*/
 int calcTimeSlice(int pid) {
   int totalWeight = sumWeight();
   struct proc *p;
@@ -192,10 +208,10 @@ int calcTimeSlice(int pid) {
     }
   }
   int time_slice = (p->weight * LATENCY/totalWeight);
-  printf("time slice: %d\n", time_slice);
   if(time_slice < MIN_GRAN) {
     time_slice = MIN_GRAN;
   }
+  printf("time slice: %d\n", time_slice);
   return time_slice;
 }
 
@@ -379,6 +395,15 @@ scheduler(void)
 
 }
 
+/* Round robin scheduler
+ * Checks if current running process is at the end of the process table
+      If so it starts iterating through the table from the beginning to find the first runnable process, and then sets current process equal to that
+
+      If not it finds the current process in the process table and looks for any runnable process after it in the table.
+      If it can't find any it goes back to the beginning of the table to find hte first runnable process before it.
+
+      In case it can't find any runnable process it simply keeps the current process as running.
+*/
 int round_robin() {
 
   struct proc *p;
@@ -426,6 +451,12 @@ int round_robin() {
 }
 
 
+
+/* Linux Completely Fair Scheduler
+      Loops through the process table from the beginning to find the process with the lowest virtual run time (VRT)
+        If two process tie for lowest VRT it selects the one with the highest weight
+      Updates current process to the found process, and calculates that process' time slice (see calcTimeSlice for details) and then updates that process' virtual run time by incrementing it by (1024 * the calculated time slice)/the current process' weight
+*/
 int lcfs() {
   struct proc *p;
   struct proc *lowest;
@@ -456,6 +487,7 @@ int lcfs() {
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
+/*This method was updated to also print out a process' niceness, weight, virtual run time, and time slice, */
 void
 procdump(void)
 {
